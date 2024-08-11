@@ -1,0 +1,43 @@
+name: Image build
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+  pull_request:
+
+env:
+  IMAGE_NAME: auth-api
+  MONGO_DB_ADMIN_PASSWD: ${{ secrets.MONGO_DB_ADMIN_PASSWD }}
+  MONGO_DB_ADMIN_USER: ${{ secrets.MONGO_DB_ADMIN_USER }}
+  MONGODB_URI: ${{ secrets.MONGODB_URI }}
+  JWT_ACCESS_TOKEN_SECRET: ${{ secrets.JWT_ACCESS_TOKEN_SECRET }}
+  JWT_ACCESS_TOKEN_EXPIRATION_MS: ${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION_MS }}
+  JWT_REFRESH_TOKEN_SECRET: ${{ secrets.JWT_REFRESH_TOKEN_SECRET }}
+  JWT_REFRESH_TOKEN_EXPIRATION_MS: ${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION_MS }}
+jobs:
+
+  push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker compose build auth-api
+      - name: Tag with Image
+        run: docker tag web-app:latest $IMAGE_NAME:$GITHUB_SHA
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Push to registry
+        run: |
+          IMAGE_ID=ghcr.io/nodejs-typescript-classroom/$IMAGE_NAME
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          [ "$VERSION" == "main" ] && VERSION=latest
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION

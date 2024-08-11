@@ -1,0 +1,40 @@
+networks:
+  mongo-network:
+    driver: bridge
+    name: mongo-network
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_DB_ADMIN_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_DB_ADMIN_PASSWD}
+    networks:
+      - mongo-network
+    ports:
+      - 27017:27017
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://${MONGO_DB_ADMIN_USER}:${MONGO_DB_ADMIN_PASSWD}@localhost:27017/ --quiet
+      interval: 5s
+      timeout: 10s
+      retries: 3
+  auth-api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: production
+    image: auth-api
+    container_name: auth-api
+    ports:
+      - 3000:3000
+    environment:
+      MONGODB_URI: mongodb://${MONGO_DB_ADMIN_USER}:${MONGO_DB_ADMIN_PASSWD}@mongodb:27017/nestjs-social-auth-refresh
+      JWT_ACCESS_TOKEN_SECRET: ${JWT_ACCESS_TOKEN_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRATION_MS: ${JWT_ACCESS_TOKEN_EXPIRATION_MS}
+      JWT_REFRESH_TOKEN_SECRET: ${JWT_REFRESH_TOKEN_SECRET}
+      JWT_REFRESH_TOKEN_EXPIRATION_MS: ${JWT_REFRESH_TOKEN_EXPIRATION_MS}
+    networks:
+      - mongo-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
