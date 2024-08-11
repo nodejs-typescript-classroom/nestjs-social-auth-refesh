@@ -27,7 +27,7 @@ jobs:
       - name: Build image
         run: docker compose build auth-api
       - name: Tag with Image
-        run: docker tag web-app:latest $IMAGE_NAME:$GITHUB_SHA
+        run: docker tag auth-api:latest $IMAGE_NAME:$GITHUB_SHA
       - name: Log in to registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Push to registry
